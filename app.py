@@ -60,23 +60,26 @@ def format_dict_logic(d: dict, current_xml_remotes: dict) -> dict:
             new_key = p[x_key_original]
             if x_key_original == 'remote':
                 remote_name_in_project = x_val
-                # Case 1: The remote attribute in <project> refers to a <remote> tag defined in the XML
-                if remote_name_in_project in current_xml_remotes:
-                    fetch_url = current_xml_remotes[remote_name_in_project]
-                    found_known_shortname = False
-                    for known_shortname, known_url in KNOWN_REMOTES.items():
-                        if fetch_url == known_url:
-                            ans[new_key] = known_shortname
-                            found_known_shortname = True
-                            break
-                    if not found_known_shortname:
-                        ans[new_key] = remote_name_in_project # Use the name from XML's <remote name="this_name">
-                # Case 2: The remote attribute in <project> refers directly to a KNOWN_REMOTES shortname
-                elif remote_name_in_project in KNOWN_REMOTES:
+                if remote_name_in_project[:5] == "aosp-":
                     ans[new_key] = remote_name_in_project
-                # Case 3: Unknown remote
                 else:
-                    ans[new_key] = '!!!!!!idk_remote_not_in_xml_or_known_remotes'
+                    # Case 1: The remote attribute in <project> refers to a <remote> tag defined in the XML
+                    if remote_name_in_project in current_xml_remotes:
+                        fetch_url = current_xml_remotes[remote_name_in_project]
+                        found_known_shortname = False
+                        for known_shortname, known_url in KNOWN_REMOTES.items():
+                            if fetch_url == known_url:
+                                ans[new_key] = known_shortname
+                                found_known_shortname = True
+                                break
+                        if not found_known_shortname:
+                            ans[new_key] = remote_name_in_project # Use the name from XML's <remote name="this_name">
+                    # Case 2: The remote attribute in <project> refers directly to a KNOWN_REMOTES shortname
+                    elif remote_name_in_project in KNOWN_REMOTES:
+                        ans[new_key] = remote_name_in_project
+                    # Case 3: Unknown remote
+                    else:
+                        ans[new_key] = '!!!!!!idk'
             else:
                 ans[new_key] = x_val
         # Keep other attributes not in p as they are (e.g. 'groups')
