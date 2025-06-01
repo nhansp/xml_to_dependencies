@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xml -> evolution.dependencies</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</head>
+<body>
+    <div class="container">
+        <a href="https://evolution-x.org" class="nav">
+            <img src="https://evolution-x.org/static/media/evoXLogo.36f8ac120698c5856e8023517adc3ece.svg" width="50" height="50">
+            &nbsp;Evolution X
+        </a>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+        {% if source_description and not error and has_results %}
+             <p class="success-source">Successfully processed XML {{ source_description }}.</p>
+        {% elif source_description and error %}
+             <p class="error">Attempted to process XML {{ source_description }}, but an error occurred: {{ error }}</p>
+        {% endif %}
+
+
+        <div class="info-box">
+            <h3>xml -> evolution.dependencies</h3>
+            <p>Provide XML by uploading a file, or pasting its content below. 
+                <br>
+                The script will only process <code>&lt;project&gt;</code> tags and <code>&lt;remote&gt;</code> definitions.</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            <div>
+                <label for="xmlfile">Upload XML file:</label>
+                <input type="file" name="xmlfile" id="xmlfile" accept=".xml,text/xml">
+            </div>
+            <div>
+                <label for="xmltext">Or paste XML content:</label>
+                <textarea name="xmltext" id="xmltext" placeholder="<manifest>...</manifest>"></textarea>
+            </div>
+            <input type="submit" value="Process XML">
+        </form>
+
+        {% if has_results %}
+            <h2>Processed data</h2>
+            {% if projects %}
+                <textarea id="deps" disabled>{{ formatted_projects }}</textarea>
+                <button onclick="copyContent();" class="button">Copy</button>
+                <a href="{{ url_for('download_dependencies') }}" class="button">Download as {{ depname if depname else 'evolution' }}.dependencies</a>
+                <div class="processed-info" style="overflow-x:auto;"> <table style="table-layout: fixed;"> <thead>
+                        <tr>
+                            {% set headers = [] %}
+                            {% set common_keys = ['repository', 'target_path', 'branch', 'remote', 'clone_depth'] %}
+                            {% for item in projects if item.type is not defined or item.type != 'other_xml_tags' %}
+                                {% for key in item.keys() %}
+                                    {% if key not in headers %}{% set _ = headers.append(key) %}{% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            {% for key in common_keys %}{% if key in headers %}<th>{{ key.replace('_', ' ')|title }}</th>{% endif %}{% endfor %}
+                            {% for key in headers %}{% if key not in common_keys %}<th>{{ key.replace('_', ' ')|title }}</th>{% endif %}{% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in projects %}
+                            {% if item.type is defined and item.type == 'other_xml_tags' %}
+                                <tr>
+                                    <td colspan="{{ headers|length }}">
+                                        <strong>Other XML tags found:</strong>
+                                        <ul>
+                                        {% for tag_info in item.details %}
+                                            <li>
+                                                <code>&lt;{{ tag_info.tag_name }}
+                                                {% for attr, val in tag_info.items() if attr != 'tag_name' %}
+                                                    {{ attr }}="{{ val }}"
+                                                {% endfor %}
+                                                &gt;</code>
+                                            </li>
+                                        {% endfor %}
+                                        </ul>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    {% for key in common_keys %}{% if key in headers %}<td>{{ item.get(key, '') }}</td>{% endif %}{% endfor %}
+                                    {% for key in headers %}{% if key not in common_keys %}<td>{{ item.get(key, '') }}</td>{% endif %}{% endfor %}
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                </div>
+            {% else %}
+                <p>No project data to display.</p>
+            {% endif %}
+
+            <div class="remotes-info">
+                <h2>Discovered remotes (from XML <code>&lt;remote&gt;</code> tags)</h2>
+                {% if xml_remotes %}
+                    <div style="overflow-x:auto;"> <table class="known-remotes-table">
+                    <thead>
+                        <tr>
+                            <th>Remote name</th>
+                            <th>URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for name, url in xml_remotes.items() %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td>{{ url }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+                {% else %}
+                    <p>No custom remotes defined in the XML.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="remotes-info">
+            <h2>Known remotes (hardcoded)</h2>
+            <p>These are predefined remote names <a href="https://github.com/Evolution-X/manifest">(in Evolution X manifest)</a> and their corresponding URLs:</p>
+            {% if known_remotes %}
+            <div style="overflow-x:auto;"> <table class="known-remotes-table">
+                    <thead>
+                        <tr>
+                            <th>Remote name</th>
+                            <th>URL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for name, url in known_remotes.items() %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td>{{ url }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <p>No known remotes defined.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
